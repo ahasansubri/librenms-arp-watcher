@@ -1,0 +1,5 @@
+[client]
+user=arpwatcher
+password=REPLACE_WITH_A_STRONG_DATABASE_PASSWORD
+host=localhost
+database=librenms

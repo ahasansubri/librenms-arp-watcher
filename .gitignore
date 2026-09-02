@@ -1,0 +1,44 @@
+# Live configuration and credentials (keep only sanitized examples).
+config.json
+config.*.json
+mysql.cnf
+*.cnf
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Baselines, history, locks, backups and packet captures.
+*.sqlite*
+*.db
+*.db-*
+*.lock
+*.log
+*.bak
+*.backup
+*.pcap
+*.pcapng
+state/
+backups/
+
+# Python and local development output.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage*
+htmlcov/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.zip
+*.tar.gz

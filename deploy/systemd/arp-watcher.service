@@ -1,0 +1,19 @@
+[Unit]
+Description=LibreNMS ARP Baseline Watcher
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=arpwatcher
+Group=arpwatcher
+UMask=0077
+ExecStart=/opt/arp-watcher/arp_watcher.py --config /etc/arp-watcher/config.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/arp-watcher
+
+[Install]
+WantedBy=multi-user.target

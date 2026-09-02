@@ -1,0 +1,12 @@
+[Unit]
+Description=Run LibreNMS ARP Baseline Watcher every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Persistent=true
+Unit=arp-watcher.service
+
+[Install]
+WantedBy=timers.target

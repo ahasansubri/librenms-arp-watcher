@@ -1,0 +1,23 @@
+{
+  "mysql_defaults_file": "/etc/arp-watcher/mysql.cnf",
+  "state_db": "/var/lib/arp-watcher/state.sqlite3",
+  "lock_file": "/var/lib/arp-watcher/watcher.lock",
+  "monitored_interfaces": {
+    "1": ["inside"],
+    "2": ["internal1", "internal2"]
+  },
+  "resolve_after_missing_runs": 2,
+  "notifications": {
+    "enabled": true
+  },
+  "smtp": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "starttls": true,
+    "ssl": false,
+    "username": "REPLACE_WITH_SMTP_USERNAME",
+    "password": "REPLACE_WITH_SMTP_PASSWORD",
+    "sender": "arp-watcher@example.com",
+    "recipients": ["soc@example.com"]
+  }
+}
