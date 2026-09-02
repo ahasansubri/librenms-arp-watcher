@@ -74,8 +74,6 @@ outside the repository, normally under `/etc/arp-watcher/`.
 
 1. [Install on Linux](docs/INSTALLATION.md): accounts, least-privilege DB access, SMTP and initial baseline.
 2. [Operate the watcher](docs/OPERATIONS.md): add devices, approve mappings, test and troubleshoot.
-3. [Upgrade an existing installation](docs/UPGRADING.md): keep existing baselines, credentials and history.
-4. [Publish to GitHub](docs/PUBLISHING.md): repository setup and pre-publication checks.
 
 Do not reinitialize an existing baseline. Review legitimate mappings before
 initialization or approval; ARP presence is not proof that an endpoint is trusted.
