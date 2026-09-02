@@ -1,7 +1,6 @@
 # Installation (Ubuntu 24.04 reference)
 
-For an existing installation, use [UPGRADING.md](UPGRADING.md). Run these steps
-only on a server you administer. Commands assume the repository root is your
+Run these steps only on a server you administer. Commands assume the repository root is your
 working directory and LibreNMS uses a local MariaDB database named `librenms`.
 Other deployments require adapting database connectivity and paths.
 
