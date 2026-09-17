@@ -31,7 +31,7 @@ from typing import Any
 
 
 DEFAULT_CONFIG = "/etc/arp-watcher/config.json"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def utc_now() -> str:

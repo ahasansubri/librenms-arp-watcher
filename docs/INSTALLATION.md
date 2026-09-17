@@ -8,13 +8,17 @@ Other deployments require adapting database connectivity and paths.
 
 ```bash
 sudo apt update
-sudo apt install python3 mariadb-client
+sudo apt install python3 mariadb-client util-linux
 python3 --version
 mysql --version
+runuser --version
+flock --version
 ```
 
 Before installing, confirm LibreNMS already stores ARP rows for the intended
-devices/interfaces. The watcher does not enable ARP discovery on LibreNMS.
+devices/interfaces. The supplied combined cycle refreshes those rows by invoking
+LibreNMS discovery; it cannot make a firewall expose an ARP table that its SNMP
+agent does not provide.
 
 ```bash
 sudo mariadb -D librenms -e "
@@ -137,21 +141,41 @@ ARP table can still produce a partial initial baseline; review scope coverage.
 Future legitimate entries require explicit approval. A normal run does not
 initialize a baseline automatically.
 
-## 6. Enable scheduling
+## 6. Install the five-minute refresh cycle
+
+The recommended schedule refreshes LibreNMS ARP data first and runs the watcher
+only after every selected device succeeds. Install the watcher-only service for
+manual testing, plus the combined script, service and timer:
 
 ```bash
 sudo install -o root -g root -m 0644 deploy/systemd/arp-watcher.service /etc/systemd/system/arp-watcher.service
-sudo install -o root -g root -m 0644 deploy/systemd/arp-watcher.timer /etc/systemd/system/arp-watcher.timer
+sudo install -o root -g root -m 0750 scripts/arp-monitor-cycle /usr/local/sbin/arp-monitor-cycle
+sudo install -o root -g root -m 0644 deploy/systemd/arp-monitor-cycle.service /etc/systemd/system/arp-monitor-cycle.service
+sudo install -o root -g root -m 0644 deploy/systemd/arp-monitor-cycle.timer /etc/systemd/system/arp-monitor-cycle.timer
 sudo systemctl daemon-reload
-sudo systemctl enable --now arp-watcher.timer
-sudo systemctl start arp-watcher.service
-sudo journalctl -u arp-watcher.service -n 30 --no-pager
-sudo systemctl list-timers arp-watcher.timer --all
+sudo bash -n /usr/local/sbin/arp-monitor-cycle
+sudo systemctl start arp-monitor-cycle.service
+sudo journalctl -u arp-monitor-cycle.service -n 100 --no-pager
 ```
 
-The oneshot service normally returns to `inactive (dead)` after success. The timer
-remains active. `OnUnitActiveSec=5min` schedules relative executions, not fixed
-wall-clock times; long runs do not overlap because of systemd and the process lock.
+Confirm the log shows each configured device, `ARP table refresh completed
+successfully`, the watcher result, and `ARP monitoring cycle completed
+successfully`. Then enable scheduling:
+
+```bash
+sudo systemctl disable --now arp-watcher.timer 2>/dev/null || true
+sudo systemctl enable --now arp-monitor-cycle.timer
+sudo systemctl status arp-monitor-cycle.timer --no-pager
+sudo systemctl list-timers arp-monitor-cycle.timer --all
+```
+
+The oneshot service normally returns to `inactive (dead)` after success. The
+timer remains `active (waiting)`. It targets exact five-minute clock boundaries;
+systemd and `flock` prevent overlap. The standalone `arp-watcher.timer` is a
+legacy option and must remain disabled while the combined timer is enabled.
+
+See [ARP_REFRESH_CYCLE.md](ARP_REFRESH_CYCLE.md) for architecture, upgrade steps,
+database verification and troubleshooting.
 
 ## 7. Validate operationally
 

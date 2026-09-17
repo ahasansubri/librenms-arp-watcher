@@ -18,6 +18,15 @@ class RepositoryChecks(unittest.TestCase):
         (self.root / "examples").mkdir()
         for name in ["config.json.example", "mysql.cnf.example"]:
             (self.root / "examples" / name).write_bytes((ROOT / "examples" / name).read_bytes())
+        for relative in [
+            "scripts/arp-monitor-cycle",
+            "deploy/systemd/arp-monitor-cycle.service",
+            "deploy/systemd/arp-monitor-cycle.timer",
+            "docs/ARP_REFRESH_CYCLE.md",
+        ]:
+            target = self.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((ROOT / relative).read_bytes())
 
     def test_clean_examples(self):
         self.assertEqual(checker.check(self.root), [])
@@ -38,6 +47,10 @@ class RepositoryChecks(unittest.TestCase):
         (self.root / ".git").mkdir()
         (self.root / ".git" / "config.json").write_text("{}")
         self.assertEqual(checker.check(self.root), [])
+
+    def test_reject_missing_refresh_cycle_file(self):
+        (self.root / "deploy/systemd/arp-monitor-cycle.timer").unlink()
+        self.assertTrue(any("Required refresh-cycle" in e for e in checker.check(self.root)))
 
 
 if __name__ == "__main__":

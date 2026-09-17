@@ -2,9 +2,13 @@
 
 ## Deployment controls
 
-- Run as an unprivileged dedicated Linux account, not root.
+- Run the watcher as the unprivileged `arpwatcher` Linux account. The optional
+  root-owned cycle starts as root only to invoke discovery as `librenms` and the
+  watcher as `arpwatcher`; do not make its script or live config group-writable.
 - Grant only SELECT on the three required LibreNMS tables; no global/database-wide writes.
 - Store live configuration under `/etc/arp-watcher`, readable only by root and the service group.
+- Keep `/usr/local/sbin/arp-monitor-cycle` owned by root with mode `0750` and
+  its systemd units owned by root with mode `0644`.
 - Protect the SQLite database and backups: they contain device names, MAC/IP mappings and history.
 - Prefer SMTP with STARTTLS or implicit TLS and valid certificates. Disable TLS only
   for a deliberately approved, protected relay path; never send credentials over an untrusted cleartext connection.

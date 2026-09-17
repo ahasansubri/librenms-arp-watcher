@@ -1,0 +1,11 @@
+[Unit]
+Description=Run LibreNMS ARP Refresh and Watcher Every Five Minutes
+
+[Timer]
+OnCalendar=*-*-* *:0/5:00
+AccuracySec=15s
+Persistent=true
+Unit=arp-monitor-cycle.service
+
+[Install]
+WantedBy=timers.target

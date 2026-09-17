@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG_FILE="${ARP_WATCHER_CONFIG:-/etc/arp-watcher/config.json}"
+LNMS="${LIBRENMS_CLI:-/opt/librenms/lnms}"
+WATCHER="${ARP_WATCHER_PROGRAM:-/opt/arp-watcher/arp_watcher.py}"
+RUNUSER="${RUNUSER_PROGRAM:-/usr/sbin/runuser}"
+
+if [[ ! -r "$CONFIG_FILE" ]]; then
+    echo "ERROR: Cannot read $CONFIG_FILE" >&2
+    exit 1
+fi
+
+if [[ ! -x "$LNMS" ]]; then
+    echo "ERROR: LibreNMS CLI not found or not executable: $LNMS" >&2
+    exit 1
+fi
+
+if [[ ! -x "$WATCHER" ]]; then
+    echo "ERROR: ARP watcher not found or not executable: $WATCHER" >&2
+    exit 1
+fi
+
+if [[ ! -x "$RUNUSER" ]]; then
+    echo "ERROR: runuser not found or not executable: $RUNUSER" >&2
+    exit 1
+fi
+
+device_output=$(
+    python3 - "$CONFIG_FILE" <<'PY'
+import json
+import sys
+
+config_path = sys.argv[1]
+
+with open(config_path, encoding="utf-8") as handle:
+    config = json.load(handle)
+
+if "monitored_interfaces" in config:
+    scopes = config["monitored_interfaces"]
+    if not isinstance(scopes, dict) or not scopes:
+        raise SystemExit("monitored_interfaces must be a non-empty JSON object")
+    raw_device_ids = scopes.keys()
+elif "device_ids" in config:
+    raw_device_ids = config["device_ids"]
+    if not isinstance(raw_device_ids, list) or not raw_device_ids:
+        raise SystemExit("device_ids must be a non-empty JSON array")
+else:
+    raise SystemExit("No monitored_interfaces or device_ids configuration found")
+
+device_ids = set()
+for raw_device_id in raw_device_ids:
+    try:
+        device_id = int(raw_device_id)
+    except (TypeError, ValueError):
+        raise SystemExit(f"Invalid LibreNMS device ID: {raw_device_id!r}")
+    if device_id <= 0:
+        raise SystemExit(f"Invalid LibreNMS device ID: {device_id}")
+    device_ids.add(device_id)
+
+for device_id in sorted(device_ids):
+    print(device_id)
+PY
+)
+
+if [[ -z "$device_output" ]]; then
+    echo "ERROR: No monitored LibreNMS device IDs were found" >&2
+    exit 1
+fi
+
+mapfile -t device_ids <<< "$device_output"
+
+echo "Starting LibreNMS ARP refresh for ${#device_ids[@]} device(s)"
+
+for device_id in "${device_ids[@]}"; do
+    echo "Refreshing arp-table for LibreNMS device ID ${device_id}"
+    "$RUNUSER" -u librenms -- \
+        "$LNMS" device:discover "$device_id" -m arp-table
+done
+
+echo "ARP table refresh completed successfully"
+echo "Starting ARP baseline watcher"
+
+"$RUNUSER" -u arpwatcher -- \
+    "$WATCHER" --config "$CONFIG_FILE"
+
+echo "ARP monitoring cycle completed successfully"

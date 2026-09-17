@@ -4,7 +4,9 @@
 
 A small Python service for SOC and network operations teams. It compares selected
 device/interface pairs against an explicitly approved SQLite baseline and sends
-HTML email notifications. It does not query or modify firewalls directly.
+HTML email notifications. The optional combined cycle first asks LibreNMS to
+refresh each selected device's ARP table through its existing SNMP configuration.
+The project does not modify firewall configuration.
 
 Independent community project; not an official LibreNMS product or vendor integration.
 
@@ -27,19 +29,25 @@ runs; an anomaly that reappears after recovery can alert again.
 - Explicit approval of MAC/IP mappings; newly observed entries are never trusted automatically.
 - Persistent SQLite baseline and alert history.
 - Read-only access to three LibreNMS database tables.
-- SNMP-independent operation: works with devices whose ARP data LibreNMS actually stores.
+- The watcher itself uses stored data; the combined refresh relies on LibreNMS
+  SNMP support for the monitored device's ARP table.
 - Dry-run mode, configuration validation, baseline listing and interface-specific approval.
 - HTML emails with device, interface, observed mapping and expected mapping.
-- A five-minute systemd timer and restricted Linux service account.
+- A five-minute refresh-and-watch systemd cycle with overlap protection.
+- Least-privilege execution: discovery as `librenms`, comparison as `arpwatcher`.
 - No third-party Python runtime dependencies.
 - Backward compatibility with the original single-interface configuration and SQLite schema.
 
 ## Data flow
 
-1. LibreNMS collects device ARP data through its own discovery/polling workflow.
-2. The watcher reads matching records from `ipv4_mac`, `devices` and `ports`.
-3. It compares records with the local approved baseline and updates alert history.
-4. An SMTP server delivers active/recovery notifications.
+1. The combined cycle reads monitored device IDs from the watcher configuration.
+2. LibreNMS refreshes each selected device using only its `arp-table` discovery module.
+3. The watcher reads matching records from `ipv4_mac`, `devices` and `ports`.
+4. It compares records with the local approved baseline and updates alert history.
+5. An SMTP server delivers active/recovery notifications.
+
+If any selected discovery fails, the cycle stops before running the watcher. This
+avoids evaluating a mixture of fresh and stale device data.
 
 This is a database-based watcher, not a packet-capture daemon, NAC system or active network scanner.
 
@@ -48,7 +56,8 @@ This is a database-based watcher, not a packet-capture daemon, NAC system or act
 - Linux, Python 3.10 or later (`fcntl` is required; native Windows execution is unsupported).
 - A working LibreNMS installation with IPv4 ARP entries in MariaDB database `librenms`.
 - A `mysql`-compatible CLI and access to the selected tables.
-- SQLite support in Python; systemd for the supplied deployment units.
+- SQLite support in Python; systemd and `util-linux` (`runuser`, `flock`) for
+  the supplied deployment units.
 - A reachable SMTP server for email notifications.
 
 Ubuntu 24.04 is the deployment reference. CI is configured for Python 3.10–3.13;
@@ -73,7 +82,8 @@ outside the repository, normally under `/etc/arp-watcher/`.
 ## Start here
 
 1. [Install on Linux](docs/INSTALLATION.md): accounts, least-privilege DB access, SMTP and initial baseline.
-2. [Operate the watcher](docs/OPERATIONS.md): add devices, approve mappings, test and troubleshoot.
+2. [Understand the five-minute refresh cycle](docs/ARP_REFRESH_CYCLE.md): sequencing, systemd units and verification.
+3. [Operate the watcher](docs/OPERATIONS.md): add devices, approve mappings, test and troubleshoot.
 
 Do not reinitialize an existing baseline. Review legitimate mappings before
 initialization or approval; ARP presence is not proof that an endpoint is trusted.
@@ -117,8 +127,10 @@ email and do not require network devices or a production database.
 
 ## Important limitations
 
-- Detection speed is bounded by LibreNMS ARP freshness. Running the watcher every
-  five minutes does not force LibreNMS to refresh its ARP table every five minutes.
+- The recommended combined cycle refreshes selected devices every five minutes.
+  Watcher-only manual runs still depend on the most recent LibreNMS ARP discovery.
+- Module-only refresh updates LibreNMS `devices.last_discovered`; that timestamp
+  no longer distinguishes this ARP refresh from a normal full discovery.
 - ARP is opportunistic. Quiet or disconnected endpoints may not appear. Missing
   ARP entries are not device-down alerts.
 - Recovery means an anomaly disappeared from stored observations. ARP aging,

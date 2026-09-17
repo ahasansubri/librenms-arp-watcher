@@ -1,0 +1,16 @@
+[Unit]
+Description=LibreNMS ARP Discovery and Baseline Watcher Cycle
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RuntimeDirectory=arp-monitor-cycle
+RuntimeDirectoryMode=0750
+ExecStart=/usr/bin/flock -n /run/arp-monitor-cycle/cycle.lock /usr/local/sbin/arp-monitor-cycle
+TimeoutStartSec=4min
+Nice=10
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

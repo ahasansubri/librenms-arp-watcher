@@ -5,4 +5,5 @@
 *.cnf.example text eol=lf
 *.service text eol=lf
 *.timer text eol=lf
+scripts/arp-monitor-cycle text eol=lf
 *.yml text eol=lf

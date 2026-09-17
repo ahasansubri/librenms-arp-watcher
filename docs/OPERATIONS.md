@@ -9,8 +9,8 @@
 5. Run a dry-run, review anomalies, then resume the timer.
 
 ```bash
-sudo systemctl stop arp-watcher.timer
-sudo systemctl status arp-watcher.service --no-pager
+sudo systemctl stop arp-monitor-cycle.timer
+sudo systemctl status arp-monitor-cycle.service --no-pager
 sudo nano /etc/arp-watcher/config.json
 ```
 
@@ -51,13 +51,14 @@ sudo -u arpwatcher /opt/arp-watcher/arp_watcher.py \
   --config /etc/arp-watcher/config.json --list
 sudo -u arpwatcher /opt/arp-watcher/arp_watcher.py \
   --config /etc/arp-watcher/config.json --dry-run
-sudo systemctl start arp-watcher.timer
-sudo systemctl start arp-watcher.service
-sudo journalctl -u arp-watcher.service -n 30 --no-pager
+sudo systemctl start arp-monitor-cycle.service
+sudo journalctl -u arp-monitor-cycle.service -n 100 --no-pager
+sudo systemctl start arp-monitor-cycle.timer
 ```
 
 No service-unit reload is required for config-only changes. If validation fails,
-fix the config or restore the prior config before resuming.
+fix the config or restore the prior config before resuming. The next cycle reads
+the changed device IDs automatically; no script edit is required.
 
 ## CLI reference
 
@@ -92,8 +93,8 @@ commands are executing. Copy the entire state directory to preserve SQLite WAL
 sidecar files alongside the database:
 
 ```bash
-sudo systemctl stop arp-watcher.timer
-sudo systemctl status arp-watcher.service --no-pager
+sudo systemctl stop arp-monitor-cycle.timer
+sudo systemctl status arp-monitor-cycle.service --no-pager
 ```
 
 Continue only after the service is inactive:
@@ -104,7 +105,7 @@ sudo cp -a /etc/arp-watcher "$arp_backup_dir/config"
 sudo cp -a /var/lib/arp-watcher "$arp_backup_dir/state"
 sudo cp -a /opt/arp-watcher/arp_watcher.py "$arp_backup_dir/arp_watcher.py"
 printf 'Backup location: %s\n' "$arp_backup_dir"
-sudo systemctl start arp-watcher.timer
+sudo systemctl start arp-monitor-cycle.timer
 ```
 
 Keep the backup private and test recovery in a separate environment. Do not copy
@@ -116,10 +117,12 @@ alerts or lose approvals; review the target and restore point before replacement
 | Symptom | Check |
 | --- | --- |
 | MariaDB access denied | Test as `arpwatcher` with the same defaults file; check password quoting and account host |
-| No ARP rows for a scope | Verify `device_id`, exact `ifName`, LibreNMS discovery, and ARP freshness |
+| No ARP rows for a scope | Verify `device_id`, exact `ifName`, SNMP ARP support and the combined-cycle discovery log |
 | Unknown-MAC alerts after onboarding | Review and explicitly approve existing legitimate mappings |
 | No email despite service success | Check journal, SMTP logs, recipients and notification settings |
 | Timer active, service inactive | Normal after a successful oneshot execution; inspect last exit/logs |
+| Watcher did not run after refresh started | One device discovery failed; fix it before retrying |
+| Cycle reports an invalid device ID | Correct `monitored_interfaces`/legacy `device_ids`; every ID must exist in LibreNMS |
 | Another instance already running | A live process holds the lock; investigate before retrying; do not delete the lock file |
 | Initialization refused | Baseline already exists; use `--approve`, not database deletion |
 | Interface required for approval | Add `--interface` for a device monitoring more than one interface |

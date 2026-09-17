@@ -21,6 +21,15 @@ TOKEN_PATTERNS = [
 
 def check(root=ROOT):
     errors = []
+    required_files = (
+        "scripts/arp-monitor-cycle",
+        "deploy/systemd/arp-monitor-cycle.service",
+        "deploy/systemd/arp-monitor-cycle.timer",
+        "docs/ARP_REFRESH_CYCLE.md",
+    )
+    for relative in required_files:
+        if not (root / relative).is_file():
+            errors.append(f"Required refresh-cycle file missing: {relative}")
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root)
         if any(part in SKIP for part in relative.parts) or not path.is_file():
