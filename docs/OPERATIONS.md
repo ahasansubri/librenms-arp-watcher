@@ -79,6 +79,23 @@ Actions are mutually exclusive. Dry-run returns 0 for no anomalies, 2 for detect
 anomalies and 1 for execution errors. State connection and lock infrastructure can
 still be created by a dry-run; do not mistake it for an entirely filesystem-read-only command.
 
+## Check the last discovery times
+
+Check if monitored device discovery is working as expected.
+
+```bash
+sudo mysql -D librenms -e "
+SELECT
+    device_id,
+    hostname,
+    last_polled,
+    last_discovered,
+    TIMESTAMPDIFF(MINUTE, last_discovered, NOW()) AS discovery_age_minutes
+FROM devices
+ORDER BY last_discovered;
+"
+```
+
 ## Removed interfaces and devices
 
 Removing a configured scope stops observing it and freezes its active alerts.
