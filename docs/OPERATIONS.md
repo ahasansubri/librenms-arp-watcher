@@ -31,6 +31,13 @@ its existing endpoints. Validate the edited settings:
 sudo -u arpwatcher /opt/arp-watcher/arp_watcher.py \
   --config /etc/arp-watcher/config.json --validate-config
 ```
+Validate the json syntex:
+
+```bash
+sudo -u arpwatcher jq empty \
+  /etc/arp-watcher/config.json \
+  && echo "JSON syntax valid"
+```
 
 Approve each authorized IP/MAC separately (example values):
 
